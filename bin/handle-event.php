@@ -15,7 +15,7 @@ $events = json_decode($input, true);
 $event_handler = EventHandler::instance();
 
 foreach($events as $event) {
-    Log::debug('Received event: '.json_encode($event, 192));
+    // Log::debug('Received event: '.json_encode($event, 192));
     $event_handler->handleEvent($event);
 }
 

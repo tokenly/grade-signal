@@ -35,11 +35,11 @@ class EventHandler
         $status = $event['Status'];
         $is_up = ($status == 'passing');
 
-        Log::debug("$name: ".($is_up?'UP':'DOWN')."");
+        // Log::debug("$name: ".($is_up?'UP':'DOWN')."");
         $last_state = $this->lastState($check_id);
         $last_state_status = ($last_state ? $last_state->status : null);
 
-        Log::debug("$name: \$last_state = $last_state_status ".($last_state ? $last_state->timestamp : null));
+        // Log::debug("$name: \$last_state = $last_state_status ".($last_state ? $last_state->timestamp : null));
 
         if ($is_up) {
             if ($last_state_status == 'up') { return; }
@@ -65,7 +65,6 @@ class EventHandler
     }
 
     protected function changeStatus($status, $check_id, $name, $note=null) {
-        print "Now ".(strtoupper($status))." $check_id\n";
         $state = $this->store->findOrCreateState($check_id);
         $state->name             = $name;
         $state->status           = $status;
@@ -73,6 +72,8 @@ class EventHandler
         $state->{"last_$status"} = time();
         $state->note = ($note === null ? '' : $note);
         $this->store->storeState($state);
+
+        Log::debug("$name is now $status".($note ? ' '.$note : ''));
     }
 
     protected function __construct() {
