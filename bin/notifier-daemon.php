@@ -24,8 +24,9 @@ while (true) {
     }
 
     sleep(5);
-    if (time() - $start > 300) {
-        // 5 minutes
+
+    if (time() - $start > 3600) {
+        // 1 hour
         Log::debug("notifier process still alive");
         $start = time();
     }
