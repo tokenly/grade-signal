@@ -68,7 +68,13 @@ class Store
 
 
     protected function __construct() {
-        R::setup('sqlite:'.BASE_PATH.'/data/data.db');
+        $db_path = BASE_PATH.'/data/data.db';
+
+        try {
+            R::setup('sqlite:'.$db_path);
+        } catch (Exception $e) {
+            Log::warn('failed to setup DB at '.$db_path)            ;
+        }
     }
 
 
