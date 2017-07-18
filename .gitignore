@@ -1,0 +1,4 @@
+/vendor/
+.env
+/samples/
+/data/data.db
