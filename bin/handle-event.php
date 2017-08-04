@@ -1,7 +1,6 @@
 #!/usr/bin/env php
 <?php 
 
-use App\Consul;
 use App\Environment;
 use App\Log;
 use App\EventHandler;
