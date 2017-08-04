@@ -31,47 +31,41 @@ class Notifier
     }
 
     public function checkAllStates() {
+        $all_found_states_by_name = [];
         foreach ($this->store->findAllStateIDs() as $state_id) {
             $state = $this->store->findByID($state_id);
             if (!$state) { continue; }
 
-            $notified_delay       = isset($state->last_notified_timestamp) ? $state->last_notified_timestamp : 86400;
-            $last_changed_delay   = time() - (isset($state->timestamp) ? $state->timestamp : 0);
-            $last_notified_status = isset($state->last_notified_status) ? $state->last_notified_status : null;
+            // update $all_found_states_by_name
+            $all_found_states_by_name[$state->name] = $state;
 
-            // always wait for MIN_CHANGED_DELAY
-            if ($last_changed_delay < self::MIN_CHANGED_DELAY) { continue; }
+            $this->notifyStateIfChanged($state);
+        }
 
-            // always wait for MIN_NOTIFIED_DELAY
-            if ($notified_delay < self::MIN_NOTIFIED_DELAY) { continue; }
-
-            if ($last_notified_status == $state->status) {
-                // nothing changed
-
-                //  maybe re-notify in the future...
-
-            } else {
-                // state changed
-
-                // mark as notified
-                $state->last_notified_timestamp = time();
-                $state->last_notified_status = $state->status;
-                $this->store->storeState($state);
-
-                // notify
-                switch ($state->status) {
-                    case 'up':
-                        $this->notify('up', $state->name, $state->check_id);
-                        break;
-                    
-                    default:
-                        $this->notify('down', $state->name, $state->check_id, $state->note);
-                        break;
-                }
+        // find any missing required checks
+        $names = $this->getRequiredCheckNames();
+        foreach($names as $name) {
+            $not_found_check_id = "notfound:".$name;
+            $state = $this->store->findByID($not_found_check_id);
+            if (!$state) {
+                $state = $this->store->newState($not_found_check_id, 'up', 0);
+                $state->name                    = $name." (Exists)";
+                $state->last_notified_timestamp = 0;
+                $state->timestamp               = 0;
+                $state->last_notified_status    = null;
             }
+
+            if (isset($all_found_states_by_name[$name])) {
+                // already found - copy the state status
+                $state->status = $all_found_states_by_name[$name]->status;
+            } else {
+                // not found - mark it down
+                $state->status = 'down';
+            }
+
+            $this->notifyStateIfChanged($state);
         }
     }
-
 
 
     public function notify($status, $name, $check_id, $note=null) {
@@ -182,5 +176,54 @@ class Notifier
         $this->store = Store::instance();
     }
 
+
+    protected function getRequiredCheckNames() {
+        if (!isset($this->required_check_names)) {
+            $this->required_check_names = [];
+
+            $json_string = getenv('REQUIRED_SERVICE_CHECK_NAMES');
+            if (strlen($json_string)) {
+                $this->required_check_names = array_values(json_decode($json_string, true));
+            }
+            Log::debug('REQUIRED_SERVICE_CHECK_NAMES '.json_encode($json_string, 192));
+            Log::debug('$this->required_check_names '.json_encode($this->required_check_names, 192));
+        }
+        return $this->required_check_names;
+    }
+
+    protected function notifyStateIfChanged($state) {
+        $notified_delay       = isset($state->last_notified_timestamp) ? (time() - $state->last_notified_timestamp) : 86400;
+        $last_changed_delay   = time() - (isset($state->timestamp) ? $state->timestamp : 0);
+        $last_notified_status = isset($state->last_notified_status) ? $state->last_notified_status : null;
+
+        // always wait for MIN_CHANGED_DELAY
+        if ($last_changed_delay < self::MIN_CHANGED_DELAY) { return; }
+
+        // always wait for MIN_NOTIFIED_DELAY
+        if ($notified_delay < self::MIN_NOTIFIED_DELAY) { return; }
+
+        if ($last_notified_status == $state->status) {
+            // nothing changed
+            //  maybe re-notify in the future...
+        } else {
+            // state changed
+
+            // mark as notified
+            $state->last_notified_timestamp = time();
+            $state->last_notified_status = $state->status;
+            $this->store->storeState($state);
+
+            // notify
+            switch ($state->status) {
+                case 'up':
+                    $this->notify('up', $state->name, $state->check_id);
+                    break;
+                
+                default:
+                    $this->notify('down', $state->name, $state->check_id, $state->note);
+                    break;
+            }
+        }    
+    }
 
 }
