@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "49b6a133b52fc8fc473f0716551f9bf3",
+    "content-hash": "0cdb00464bf0ee3ba56acdce7b7a0f51",
     "packages": [
         {
             "name": "doctrine/inflector",
@@ -764,16 +764,16 @@
         },
         {
             "name": "tokenly/fluentd-logger",
-            "version": "v0.1.0",
+            "version": "v0.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/tokenly/fluentd-logger.git",
-                "reference": "8fe07c7b2dfba6cc18989aeba429d558d4f674e3"
+                "reference": "f98ba5a281981671267716768a6c00bcb35a43e3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/tokenly/fluentd-logger/zipball/8fe07c7b2dfba6cc18989aeba429d558d4f674e3",
-                "reference": "8fe07c7b2dfba6cc18989aeba429d558d4f674e3",
+                "url": "https://api.github.com/repos/tokenly/fluentd-logger/zipball/f98ba5a281981671267716768a6c00bcb35a43e3",
+                "reference": "f98ba5a281981671267716768a6c00bcb35a43e3",
                 "shasum": ""
             },
             "require": {
@@ -816,7 +816,7 @@
                 "fluentd",
                 "logging"
             ],
-            "time": "2017-07-06T02:27:08+00:00"
+            "time": "2017-08-05T13:16:55+00:00"
         },
         {
             "name": "vlucas/phpdotenv",
