@@ -22,6 +22,7 @@
         "mandrill/mandrill": "^1",
         "tokenly/fluentd-logger": "^0.2.1",
         "gabordemooij/redbean": "^4.3.4",
-        "maknz/slack": "^1.5.0"
+        "maknz/slack": "^1.5.0",
+        "tokenly/quotebot-client": "^1.0.1"
     }
 }

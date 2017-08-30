@@ -3,6 +3,7 @@
 namespace App;
 
 use App\Cmd;
+use App\ExternalChecks;
 use App\Log;
 use App\Store;
 use Exception;
@@ -62,6 +63,32 @@ class Notifier
                 // not found - mark it down
                 $state->status = 'down';
             }
+
+            $this->notifyStateIfChanged($state);
+        }
+
+        // do external notification checks (outside of consul)
+        $external_checks = ExternalChecks::instance();
+        $specs = $external_checks->getExternalCheckSpecs();
+        foreach($specs as $spec) {
+            $name = $spec['name'];
+            $check_id = 'external:'.$spec['id'];
+            $state = $this->store->findByID($check_id);
+            if (!$state) {
+                // new state
+                $state = $this->store->newState($check_id, 'up', 0);
+                $state->name                    = $name;
+                $state->last_notified_timestamp = 0;
+                $state->timestamp               = 0;
+                $state->last_notified_status    = null;
+            }
+
+            list($status, $note) = $external_checks->runCheck($spec['id']);
+            if ($note !== null) {
+                Log::debug("$name note: $note");
+            }
+            $state->note = $note;
+            $state->status = $status;
 
             $this->notifyStateIfChanged($state);
         }

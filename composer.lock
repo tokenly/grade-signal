@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "0cdb00464bf0ee3ba56acdce7b7a0f51",
+    "content-hash": "393a4ef6f6fba06a1e45023d0f24f900",
     "packages": [
         {
             "name": "doctrine/inflector",
@@ -817,6 +817,48 @@
                 "logging"
             ],
             "time": "2017-08-05T13:16:55+00:00"
+        },
+        {
+            "name": "tokenly/quotebot-client",
+            "version": "v1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/tokenly/quotebot-client.git",
+                "reference": "042ee1c5ec62e0fd4531fa0939ddeaac5a25152b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/tokenly/quotebot-client/zipball/042ee1c5ec62e0fd4531fa0939ddeaac5a25152b",
+                "reference": "042ee1c5ec62e0fd4531fa0939ddeaac5a25152b",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/guzzle": "~6.0",
+                "php": ">=7.0.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "dev-master",
+                "phpunit/phpunit": "^5"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Tokenly\\QuotebotClient\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Devon Weller",
+                    "email": "dweller@devonweller.com",
+                    "homepage": "http://devonweller.com"
+                }
+            ],
+            "description": "A quotebot client library",
+            "time": "2017-08-30T15:37:50+00:00"
         },
         {
             "name": "vlucas/phpdotenv",
