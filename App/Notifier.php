@@ -22,6 +22,9 @@ class Notifier
     // never notify twice within this time
     const MIN_NOTIFIED_DELAY = 15;
 
+    // re-notify about down states after this amount of time
+    const RENOTIFY_DELAY = 3600 * 4; // 4 hours
+
     static $INSTANCE;
 
     public static function instance() {
@@ -40,7 +43,7 @@ class Notifier
             // update $all_found_states_by_name
             $all_found_states_by_name[$state->name] = $state;
 
-            $this->notifyStateIfChanged($state);
+            $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
         }
 
         // find any missing required checks
@@ -64,7 +67,7 @@ class Notifier
                 $state->status = 'down';
             }
 
-            $this->notifyStateIfChanged($state);
+            $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
         }
 
         // do external notification checks (outside of consul)
@@ -90,29 +93,33 @@ class Notifier
             $state->note = $note;
             $state->status = $status;
 
-            $this->notifyStateIfChanged($state);
+            $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
         }
     }
 
 
-    public function notify($status, $name, $check_id, $note=null) {
+    public function notify($status, $state_change_timestamp, $name, $check_id, $note=null) {
         $should_email = !!getenv('EMAIL_NOTIFICATIONS') AND getenv('EMAIL_NOTIFICATIONS') != 'false';
+
+        $date = new DateTime($state_change_timestamp > 0 ? '@'.$state_change_timestamp : 'now', env('TIMEZONE'));
+        $date_string = $date->format('M. j, H:i:s e');
+
         if ($should_email) {
             if ($status == 'up') {
-                $this->email("Service UP: $name", "Service $name is now UP.\n\n".date("Y-m-d H:i:s"), $this->buildEmailRecipients($check_id));
+                $this->email("Service UP: $name", "Service $name is now UP.\n\n".$date_string, $this->buildEmailRecipients($check_id));
             }
             if ($status == 'down') {
-                $this->email("Service DOWN: $name", "Service $name is now DOWN.\n\n".($note?$note."\n\n":'').date("Y-m-d H:i:s"), $this->buildEmailRecipients($check_id));
+                $this->email("Service DOWN: $name", "Service $name is now DOWN.\n\n".($note?$note."\n\n":'').$date_string, $this->buildEmailRecipients($check_id));
             }
         }
 
         $should_slack = !!getenv('SLACK_NOTIFICATIONS') AND getenv('SLACK_NOTIFICATIONS') != 'false';
         if ($should_slack) {
             if ($status == 'up') {
-                $this->slack($status, "$name", "Service $name is now UP.");
+                $this->slack($status, "$name", "Service $name is UP as of {$date_string}.");
             }
             if ($status == 'down') {
-                $this->slack($status, "$name", "Service $name is now DOWN.".($note ? "\n".$note : ''));
+                $this->slack($status, "$name", "Service $name is DOWN as of {$date_string}.".($note ? "\n".$note : ''));
             }
         }
 
@@ -218,7 +225,7 @@ class Notifier
         return $this->required_check_names;
     }
 
-    protected function notifyStateIfChanged($state) {
+    protected function notifyStateIfChanged($state, $renotify_down_delay=null) {
         $notified_delay       = isset($state->last_notified_timestamp) ? (time() - $state->last_notified_timestamp) : 86400;
         $last_changed_delay   = time() - (isset($state->timestamp) ? $state->timestamp : 0);
         $last_notified_status = isset($state->last_notified_status) ? $state->last_notified_status : null;
@@ -229,10 +236,22 @@ class Notifier
         // always wait for MIN_NOTIFIED_DELAY
         if ($notified_delay < self::MIN_NOTIFIED_DELAY) { return; }
 
+        $should_notify = true;
         if ($last_notified_status == $state->status) {
             // nothing changed
-            //  maybe re-notify in the future...
-        } else {
+            $should_notify = false;
+
+            // notify again if still down after $renotify_down_delay
+            if ($renotify_down_delay !== null AND $state->status != 'up') {
+                $time_since_last_notification = time() - $state->last_notified_timestamp;
+                if ($time_since_last_notification >= $renotify_down_delay) {
+                    $should_notify = true;
+                }
+            }
+        }
+
+
+        if ($should_notify) {
             // state changed
 
             // mark as notified
@@ -243,11 +262,11 @@ class Notifier
             // notify
             switch ($state->status) {
                 case 'up':
-                    $this->notify('up', $state->name, $state->check_id);
+                    $this->notify('up', $state->name, $state->timestamp, $state->check_id);
                     break;
                 
                 default:
-                    $this->notify('down', $state->name, $state->check_id, $state->note);
+                    $this->notify('down', $state->name, $state->timestamp, $state->check_id, $state->note);
                     break;
             }
         }    
