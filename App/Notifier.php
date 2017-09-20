@@ -7,6 +7,7 @@ use App\ExternalChecks;
 use App\Log;
 use App\Store;
 use DateTime;
+use DateTimeZone;
 use Exception;
 use Maknz\Slack\Client;
 use Mandrill;
@@ -102,7 +103,7 @@ class Notifier
     public function notify($status, $state_change_timestamp, $name, $check_id, $note=null) {
         $should_email = !!getenv('EMAIL_NOTIFICATIONS') AND getenv('EMAIL_NOTIFICATIONS') != 'false';
 
-        $date = new DateTime($state_change_timestamp > 0 ? '@'.$state_change_timestamp : 'now', env('TIMEZONE'));
+        $date = new DateTime($state_change_timestamp > 0 ? '@'.$state_change_timestamp : 'now', new DateTimeZone(env('TIMEZONE')));
         $date_string = $date->format('M. j, H:i:s e');
 
         if ($should_email) {
