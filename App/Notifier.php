@@ -103,7 +103,8 @@ class Notifier
     public function notify($status, $name, $state_change_timestamp, $check_id, $note=null) {
         $should_email = !!getenv('EMAIL_NOTIFICATIONS') AND getenv('EMAIL_NOTIFICATIONS') != 'false';
 
-        $date = new DateTime($state_change_timestamp > 0 ? '@'.$state_change_timestamp : '@'.time(), new DateTimeZone(env('TIMEZONE')));
+        $date = new DateTime($state_change_timestamp > 0 ? '@'.$state_change_timestamp : '@'.time());
+        $date->setTimezone(new DateTimeZone(env('TIMEZONE')));
         $date_string = $date->format('M. j, g:i:s A T');
 
         if ($should_email) {
