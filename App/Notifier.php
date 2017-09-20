@@ -103,7 +103,7 @@ class Notifier
     public function notify($status, $name, $state_change_timestamp, $check_id, $note=null) {
         $should_email = !!getenv('EMAIL_NOTIFICATIONS') AND getenv('EMAIL_NOTIFICATIONS') != 'false';
 
-        $date = new DateTime($state_change_timestamp > 0 ? '@'.$state_change_timestamp : 'now', new DateTimeZone(env('TIMEZONE')));
+        $date = new DateTime($state_change_timestamp > 0 ? '@'.$state_change_timestamp : '@'.time(), new DateTimeZone(env('TIMEZONE')));
         $date_string = $date->format('M. j, h:i:s A T');
 
         if ($should_email) {
@@ -125,7 +125,7 @@ class Notifier
             }
         }
 
-        print "Notify: ".'*** '.$name.' ('.$check_id.') ***'."\n"."    Service $name is now ".(strtoupper($status)).".".($note ? "\n    ".$note : '')."\n\n";
+        print "Notify: ".'*** '.$name.' ('.$check_id.') ***'."\n"."    Service $name is now ".(strtoupper($status))." as of {$date_string}.".($note ? "\n    ".$note : '')."\n\n";
 
     }
 
