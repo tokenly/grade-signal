@@ -64,9 +64,11 @@ class Notifier
             if (isset($all_found_states_by_name[$name])) {
                 // already found - copy the state status
                 $state->status = $all_found_states_by_name[$name]->status;
+                $state->timestamp = $all_found_states_by_name[$name]->timestamp;
             } else {
                 // not found - mark it down
                 $state->status = 'down';
+                $state->timestamp = time();
             }
 
             $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
@@ -103,7 +105,7 @@ class Notifier
     public function notify($status, $name, $state_change_timestamp, $check_id, $note=null) {
         $should_email = !!getenv('EMAIL_NOTIFICATIONS') AND getenv('EMAIL_NOTIFICATIONS') != 'false';
 
-        $date = new DateTime($state_change_timestamp > 0 ? '@'.$state_change_timestamp : '@'.time());
+        $date = new DateTime($state_change_timestamp > 0 ? ('@'.$state_change_timestamp) : ('@'.time()));
         $date->setTimezone(new DateTimeZone(env('TIMEZONE')));
         $date_string = $date->format('M. j, g:i:s A T');
 
