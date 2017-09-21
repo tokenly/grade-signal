@@ -5,6 +5,7 @@ namespace App;
 use App\Cmd;
 use App\ExternalChecks;
 use App\Log;
+use App\State;
 use App\Store;
 use DateTime;
 use DateTimeZone;
@@ -35,96 +36,84 @@ class Notifier
         }
         return self::$INSTANCE;
     }
+    
+    public function processAllChecks() {
+        // process required checks
+        $this->processRequiredChecks();
+        $this->processExternalChecks();
+    }
 
-    public function checkAllStates() {
+    public function notifyAllStates() {
+        foreach ($this->store->findAllStateIDs() as $state_id) {
+            $state = State::findByID($state_id);
+            if (!$state) { continue; }
+            $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
+        }
+    }
+
+    public function processRequiredChecks() {
+        // load all states by name
         $all_found_states_by_name = [];
         foreach ($this->store->findAllStateIDs() as $state_id) {
-            $state = $this->store->findByID($state_id);
+            $state = State::findByID($state_id);
             if (!$state) { continue; }
 
             // update $all_found_states_by_name
             $all_found_states_by_name[$state->name] = $state;
-
-            $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
         }
 
         // find any missing required checks
         $names = $this->getRequiredCheckNames();
         foreach($names as $name) {
-            $not_found_check_id = "notfound:".$name;
-            $state = $this->store->findByID($not_found_check_id);
-            if (!$state) {
-                $state = $this->store->newState($not_found_check_id, 'up', 0);
-                $state->name                    = $name." (Exists)";
-                $state->last_notified_timestamp = 0;
-                $state->timestamp               = 0;
-                $state->last_notified_status    = null;
-            }
+            $required_check_id = "required:".$name;
+            $state = State::findOrCreate($required_check_id, [
+                'name' => $name." (Exists)",
+            ]);
 
             if (isset($all_found_states_by_name[$name])) {
-                // already found - copy the state status
-                $state->status = $all_found_states_by_name[$name]->status;
-                $state->timestamp = $all_found_states_by_name[$name]->timestamp;
-                $this->store->storeState($state);
+                // found - set the status to match the original one
+                $original_state = $all_found_states_by_name[$name];
+                $state->setStatus($original_state->status);
             } else {
-                // not found - mark it down
-                if ($state->status != 'down') {
-                    $state->status = 'down';
-                    $state->timestamp = time();
-                    $this->store->storeState($state);
-                }
+                // not found - so mark it down
+                $state->setStatus('down', 'Not Found');
             }
-
-            $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
         }
+    }
 
+    public function processExternalChecks() {
         // do external notification checks (outside of consul)
         $external_checks = ExternalChecks::instance();
         $specs = $external_checks->getExternalCheckSpecs();
         foreach($specs as $spec) {
             $name = $spec['name'];
             $check_id = 'external:'.$spec['id'];
-            $state = $this->store->findByID($check_id);
-            if (!$state) {
-                // new state
-                $state = $this->store->newState($check_id, 'up', 0);
-                $state->name                    = $name;
-                $state->last_notified_timestamp = 0;
-                $state->timestamp               = 0;
-                $state->last_notified_status    = null;
-            }
+            $state = State::findOrCreate($check_id, [
+                'name' => $name,
+            ]);
 
             list($status, $note) = $external_checks->runCheck($spec['id']);
-            if ($note !== null) {
-                Log::debug("$name note: $note");
-            }
-            if ($status != $state->status OR $note != $state->note OR !$state->timestamp) {
-                $state->note = $note;
-                $state->status = $status;
-                $state->timestamp = time();
-                $this->store->storeState($state);
-            }
-
-            $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
+            $state->setStatus($status, $note);
         }
     }
 
+    public function notify($status, State $state) {
+        $name        = $state->name;
+        $check_id    = $state->check_id;
+        $note        = $state->note;
+        $date_string = $state->formatTimestamp('timestamp');
 
-    public function notify($status, $name, $state_change_timestamp, $check_id, $note=null) {
+
         $should_email = !!getenv('EMAIL_NOTIFICATIONS') AND getenv('EMAIL_NOTIFICATIONS') != 'false';
-
-        $date = new DateTime($state_change_timestamp > 0 ? ('@'.$state_change_timestamp) : ('@'.time()));
-        $date->setTimezone(new DateTimeZone(env('TIMEZONE')));
-        $date_string = $date->format('M. j, g:i:s A T');
-
         if ($should_email) {
             if ($status == 'up') {
-                $this->email("Service UP: $name", "Service $name is now UP.\n\n".$date_string, $this->buildEmailRecipients($check_id));
+                $this->email("Service UP: $name", "Service $name is now UP.\n\n".$date_string, $this->buildEmailRecipients());
             }
             if ($status == 'down') {
-                $this->email("Service DOWN: $name", "Service $name is now DOWN.\n\n".($note?$note."\n\n":'').$date_string, $this->buildEmailRecipients($check_id));
+                $this->email("Service DOWN: $name", "Service $name is now DOWN.\n\n".($note?$note."\n\n":'').$date_string, $this->buildEmailRecipients());
             }
         }
+
 
         $should_slack = !!getenv('SLACK_NOTIFICATIONS') AND getenv('SLACK_NOTIFICATIONS') != 'false';
         if ($should_slack) {
@@ -136,12 +125,11 @@ class Notifier
             }
         }
 
-        print "Notify: ".'*** '.$name.' ('.$check_id.') ***'."\n"."    Service $name is now ".(strtoupper($status))." as of {$date_string}.".($note ? "\n    ".$note : '')."\n\n";
-
+        Log::debug("Notify: ".'*** '.$name.' ('.$check_id.') ***'."\n"."    Service $name is now ".(strtoupper($status))." as of {$date_string}.".($note ? "\n    ".$note : ''));
     }
 
 
-    protected function buildEmailRecipients($check_id) {
+    protected function buildEmailRecipients() {
         $recipients = [
             [
                 'email' => getenv('EMAIL_RECIPIENT_EMAIL'),
@@ -232,23 +220,15 @@ class Notifier
             if (strlen($json_string)) {
                 $this->required_check_names = array_values(json_decode($json_string, true));
             }
-            Log::debug('REQUIRED_SERVICE_CHECK_NAMES '.json_encode($json_string, 192));
-            Log::debug('$this->required_check_names '.json_encode($this->required_check_names, 192));
+            // Log::debug('REQUIRED_SERVICE_CHECK_NAMES '.json_encode($json_string, 192));
         }
         return $this->required_check_names;
     }
 
-    protected function notifyStateIfChanged($state, $renotify_down_delay=null) {
+    protected function notifyStateIfChanged(State $state, $renotify_down_delay=null) {
         $notified_delay       = isset($state->last_notified_timestamp) ? (time() - $state->last_notified_timestamp) : 86400;
-        $last_changed_delay   = time() - (isset($state->last_changed_timestamp) ? $state->last_changed_timestamp : 0);
         $last_notified_status = isset($state->last_notified_status) ? $state->last_notified_status : null;
-        // echo "{$state->name} \$last_changed_delay={$last_changed_delay} \$notified_delay={$notified_delay}\n";
-
-        // update the last_changed_timestamp if it changed
-        if ($last_notified_status != $state->status) {
-            $state->last_changed_timestamp = $state->timestamp;
-            $this->store->storeState($state);
-        }
+        $last_changed_delay   = time() - (isset($state->timestamp) ? $state->timestamp : 0);
 
         // always wait for MIN_CHANGED_DELAY
         if ($last_changed_delay < self::MIN_CHANGED_DELAY) { return; }
@@ -263,33 +243,26 @@ class Notifier
 
             // notify again if still down after $renotify_down_delay
             if ($renotify_down_delay !== null AND $state->status != 'up') {
-                $time_since_last_notification = time() - $state->last_notified_timestamp;
-                if ($time_since_last_notification >= $renotify_down_delay) {
+                if ($notified_delay >= $renotify_down_delay) {
                     $should_notify = true;
                 }
             }
         }
-
-        // echo "{$state->name} \$should_notify: ".json_encode($should_notify)."\n";
+        // echo "{$state->name} \$state->last_notified_status={$state->last_notified_status} isset(\$state->last_notified_status)=".json_encode(isset($state->last_notified_status))." \$last_notified_status=$last_notified_status \$state->status={$state->status} \$should_notify: ".json_encode($should_notify)."\n";
 
         if ($should_notify) {
-            // state changed
-
-            // mark as notified
-            $state->last_notified_timestamp = time();
-            $state->last_notified_status = $state->status;
-            $this->store->storeState($state);
-
-            // notify
             switch ($state->status) {
                 case 'up':
-                    $this->notify('up', $state->name, $state->last_changed_timestamp, $state->check_id);
+                    $this->notify('up', $state);
                     break;
                 
                 default:
-                    $this->notify('down', $state->name, $state->last_changed_timestamp, $state->check_id, $state->note);
+                    $this->notify('down', $state);
                     break;
             }
+
+            // mark as notified
+            $state->markAsNotified();
         }    
     }
 

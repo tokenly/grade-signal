@@ -23,22 +23,23 @@ class Store
     }
 
 
-    public function findOrCreateState($check_id) {
+    public function findOrCreateState($check_id, $create_vars) {
         $state = $this->findByID($check_id);
         if (!$state) {
-            $state = $this->newState($check_id);
+            $state = $this->newState($check_id, $create_vars);
         }
         return $state;
     }
 
-    public function newState($check_id, $status='up', $timestamp=null) {
+    public function newState($check_id, $create_vars) {
         $state = R::dispense('state');
 
         $state->check_id  = $check_id;
-        $state->status    = $status;
-        $state->timestamp = ($timestamp === null ? time() : $timestamp);
+        foreach($create_vars as $key => $value) {
+            $state->{$key} = $value;
+        }
 
-        $check_id = R::store( $state );
+        R::store($state);
         return $state;
     }
 

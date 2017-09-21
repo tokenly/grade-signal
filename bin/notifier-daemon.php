@@ -15,7 +15,8 @@ Log::debug("notifier process start");
 $start = time();
 while (true) {
     try {
-        $notifier->checkAllStates();
+        $notifier->processAllChecks();
+        $notifier->notifyAllStates();
     } catch (Exception $e) {
         echo "ERROR: ".$e->getMessage()."\n";
         Log::warn("ERROR: ".$e->getMessage());

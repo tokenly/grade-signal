@@ -12,7 +12,8 @@ Environment::init(__DIR__.'/..');
 $notifier = Notifier::instance();
 
 try {
-    $notifier->checkAllStates();
+    $notifier->processAllChecks();
+    $notifier->notifyAllStates();
 } catch (Exception $e) {
     echo "ERROR: ".$e->getMessage()."\n";
     Log::warn("ERROR: ".$e->getMessage());

@@ -24,18 +24,28 @@ class Log
         self::$LOGGER = new Logger('sm');
 
         // fluent logger
-        $fluent_logger = new FluentLogger('unix://'.env('FLUENTD_SOCKET', '/var/run/td-agent/td-agent.sock'), null);
-        $app_descriptor = env('APP_CODE', 'semaphore').'.'.env('APP_ENV', 'production');
-        $tag = 'applog.'.$app_descriptor;
+        $fluentd_socket = env('FLUENTD_SOCKET', '/var/run/td-agent/td-agent.sock');
+        if ($fluentd_socket) {
+            $fluent_logger = new FluentLogger('unix://'.env('FLUENTD_SOCKET', '/var/run/td-agent/td-agent.sock'), null);
+            $app_descriptor = env('APP_CODE', 'semaphore').'.'.env('APP_ENV', 'production');
+            $tag = 'applog.'.$app_descriptor;
 
-        # set up monolog
-        self::$LOGGER->pushHandler(new FluentMonologHandler($fluent_logger, $tag));
+            # set up monolog
+            self::$LOGGER->pushHandler(new FluentMonologHandler($fluent_logger, $tag));
 
-        # set up fluent event logger for measurements
-        self::$MEASUREMENT_LOGGER = new FluentEventLogger($fluent_logger, 'measure.'.$app_descriptor);
+            # set up fluent event logger for measurements
+            self::$MEASUREMENT_LOGGER = new FluentEventLogger($fluent_logger, 'measure.'.$app_descriptor);
+        } else {
+            // format stream
+            $log_path = env('LOG_PATH', BASE_PATH.'/data/trace.log');
+            $stream = new StreamHandler($log_path, Logger::DEBUG);
+            $stream->setFormatter(new LineFormatter("[%datetime%] %channel%.%level_name% %message%\n", "Y-m-d H:i:s", true));
+            self::$LOGGER->pushHandler($stream);
+        }
     }
 
     public static function measure($event, $data=[], $tags=null) {
+        if (!self::$MEASUREMENT_LOGGER) { return; }
         self::$MEASUREMENT_LOGGER->log($event, $data, $tags);
     }
 
