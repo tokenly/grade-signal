@@ -65,10 +65,14 @@ class Notifier
                 // already found - copy the state status
                 $state->status = $all_found_states_by_name[$name]->status;
                 $state->timestamp = $all_found_states_by_name[$name]->timestamp;
+                $this->store->storeState($state);
             } else {
                 // not found - mark it down
-                $state->status = 'down';
-                $state->timestamp = time();
+                if ($state->status != 'down') {
+                    $state->status = 'down';
+                    $state->timestamp = time();
+                    $this->store->storeState($state);
+                }
             }
 
             $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
@@ -94,8 +98,12 @@ class Notifier
             if ($note !== null) {
                 Log::debug("$name note: $note");
             }
-            $state->note = $note;
-            $state->status = $status;
+            if ($status != $state->status OR $note != $state->note OR !$state->timestamp) {
+                $state->note = $note;
+                $state->status = $status;
+                $state->timestamp = time();
+                $this->store->storeState($state);
+            }
 
             $this->notifyStateIfChanged($state, self::RENOTIFY_DELAY);
         }
@@ -232,8 +240,15 @@ class Notifier
 
     protected function notifyStateIfChanged($state, $renotify_down_delay=null) {
         $notified_delay       = isset($state->last_notified_timestamp) ? (time() - $state->last_notified_timestamp) : 86400;
-        $last_changed_delay   = time() - (isset($state->timestamp) ? $state->timestamp : 0);
+        $last_changed_delay   = time() - (isset($state->last_changed_timestamp) ? $state->last_changed_timestamp : 0);
         $last_notified_status = isset($state->last_notified_status) ? $state->last_notified_status : null;
+        // echo "{$state->name} \$last_changed_delay={$last_changed_delay} \$notified_delay={$notified_delay}\n";
+
+        // update the last_changed_timestamp if it changed
+        if ($last_notified_status != $state->status) {
+            $state->last_changed_timestamp = $state->timestamp;
+            $this->store->storeState($state);
+        }
 
         // always wait for MIN_CHANGED_DELAY
         if ($last_changed_delay < self::MIN_CHANGED_DELAY) { return; }
@@ -255,6 +270,7 @@ class Notifier
             }
         }
 
+        // echo "{$state->name} \$should_notify: ".json_encode($should_notify)."\n";
 
         if ($should_notify) {
             // state changed
@@ -267,11 +283,11 @@ class Notifier
             // notify
             switch ($state->status) {
                 case 'up':
-                    $this->notify('up', $state->name, $state->timestamp, $state->check_id);
+                    $this->notify('up', $state->name, $state->last_changed_timestamp, $state->check_id);
                     break;
                 
                 default:
-                    $this->notify('down', $state->name, $state->timestamp, $state->check_id, $state->note);
+                    $this->notify('down', $state->name, $state->last_changed_timestamp, $state->check_id, $state->note);
                     break;
             }
         }    
