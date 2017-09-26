@@ -82,6 +82,10 @@ class State
         Store::instance()->storeState($this->state_record);
     }
 
+    public function delete() {
+        Store::instance()->deleteState($this->state_record);
+    }
+
     // ------------------------------------------------------------------------
     
     protected function __construct($state_record) {

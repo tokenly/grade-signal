@@ -51,6 +51,40 @@ class Notifier
         }
     }
 
+    public function removeDuplicates() {
+        $duplicates = [];
+
+        $first_state_by_name = [];
+        foreach ($this->store->findAllStateIDs() as $state_id) {
+            $state = State::findByID($state_id);
+            if (!$state) { continue; }
+
+            $name = $state->name;
+            if (isset($first_state_by_name[$name])) {
+                // found a duplicate
+                if (!isset($duplicates[$name])) {
+                    // add first state
+                    $duplicates[$name] = [$first_state_by_name[$name]];
+                }
+
+                // append state
+                $duplicates[$name][] = $state;
+            } else {
+                $first_state_by_name[$name] = $state;
+            }
+
+            // delete all the duplicates and let the event handler reload the current one
+            foreach($duplicates as $name => $duplicate_list) {
+                $duplicate_list = array_slice($duplicate_list, 0, -1);
+                foreach($duplicate_list as $duplicate_state) {
+                    // echo "Deleting {$duplicate_state->check_id} {$duplicate_state->name}\n";
+                    $duplicate_state->delete();
+                    Log::debug("Deleted duplicate state {$duplicate_state->check_id} {$duplicate_state->name}");
+                }
+            }
+        }
+    }
+
     public function processRequiredChecks() {
         // load all states by name
         $all_found_states_by_name = [];
