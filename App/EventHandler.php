@@ -31,12 +31,14 @@ class EventHandler
         if (!strlen($service_id)) { return; }
 
         $name = $event['Name'];
-        $check_id = $event['CheckID'];
+        $node = $event['Node'];
+        $check_id = md5($name.'@'.$node);
         $status = $event['Status'];
         $is_up = ($status == 'passing');
 
         $state = State::findOrCreate($check_id, [
-            'name' => $name,
+            'name'            => $name,
+            'consul_check_id' => $event['CheckID'],
         ]);
 
         if ($is_up) {
