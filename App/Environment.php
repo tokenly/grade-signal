@@ -4,6 +4,7 @@ namespace App;
 
 use App\Log;
 use Dotenv;
+use Exception;
 
 /**
 * Environment

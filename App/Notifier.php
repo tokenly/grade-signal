@@ -126,7 +126,7 @@ class Notifier
                 'name' => $name,
             ]);
 
-            list($status, $note) = $external_checks->runCheck($spec['id']);
+            list($status, $note) = $external_checks->runCheck($spec);
             $state->setStatus($status, $note);
         }
     }
