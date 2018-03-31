@@ -12,6 +12,10 @@ use Exception;
 class Store
 {
 
+    public static function databaseExists() {
+        $db_path = BASE_PATH.'/data/data.db';
+        return file_exists($db_path);
+    }
 
     static $INSTANCE;
 
@@ -66,18 +70,29 @@ class Store
         R::trash($state); 
     }
 
+    public function destroyDatabase() {
+        R::close();
+        $db_path = BASE_PATH.'/data/data.db';
+        unlink($db_path);
+        R::$toolboxes = [];
+
+        $this->initDB();
+    }
 
 
     protected function __construct() {
+        $this->initDB();
+    }
+
+    protected function initDB() {
         $db_path = BASE_PATH.'/data/data.db';
 
         try {
             R::setup('sqlite:'.$db_path);
         } catch (Exception $e) {
-            Log::warn('failed to setup DB at '.$db_path)            ;
+            Log::warn('failed to setup DB at '.$db_path." ".$e->getMessage());
         }
     }
-
 
 
 }
