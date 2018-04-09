@@ -24,6 +24,9 @@ class ExternalChecks
 
     static $INSTANCE;
 
+    // save the last failure/success timestamp
+    protected $fail_timestamps = [];
+
     public static function instance()
     {
         if (self::$INSTANCE === null) {
@@ -64,7 +67,7 @@ class ExternalChecks
         $method_suffix = $spec['method'];
         $method = 'runCheck_' . $method_suffix;
         if (method_exists($this, $method)) {
-            return call_user_func([$this, $method], $spec['params']);
+            return call_user_func([$this, $method], $spec['params'], $spec);
         } else {
             // bad check
             throw new Exception("Bad method: $method_suffix", 1);
@@ -119,7 +122,7 @@ class ExternalChecks
         return ['down', implode("\n", $notes)];
     }
 
-    public function runCheck_rabbmitmq_queue_rate($parameters)
+    public function runCheck_rabbmitmq_queue_rate($parameters, $check_spec)
     {
         $notes = [];
         $status = 'up';
@@ -134,7 +137,7 @@ class ExternalChecks
         // get_no_ack_details
         $stats_to_check = ['ack', 'get_no_ack'];
         foreach ($stats_to_check as $stat_name) {
-            $checks = $parameters[$stat_name];
+            $checks = $parameters[$stat_name] ?? [];
             $rate = $result['message_stats'][$stat_name . '_details']['avg_rate'];
             if (isset($checks['min']) and $rate < $checks['min']) {
                 $notes[] = "$stat_name was $rate. Needs to be {$checks['min']}";
@@ -149,17 +152,48 @@ class ExternalChecks
         if (isset($parameters['messages'])) {
             $msg_checks = $parameters['messages'];
             $msg_count = $result['messages'];
-            if (isset($msg_checks['min']) and $msg_count < $msg_checks['min']) {
+
+            $min_passed = isset($msg_checks['min']) ? ($msg_count < $msg_checks['min']) : true;
+            $max_passed = isset($msg_checks['max']) ? ($msg_count > $msg_checks['max']) : true;
+
+            $min_passed = $this->modifyCheckDuration($check_spec['id'].':min', ($msg_checks['min_duration'] ?? 0), $min_passed);
+            $max_passed = $this->modifyCheckDuration($check_spec['id'].':max', ($msg_checks['max_duration'] ?? 0), $max_passed);
+
+            if (!$min_passed) {
                 $notes[] = "messages was $msg_count. Needs to be {$msg_checks['min']}";
                 $status = 'down';
             }
-            if (isset($msg_checks['max']) and $msg_count > $msg_checks['max']) {
+            if (!$max_passed) {
                 $notes[] = "messages was $msg_count.  Must be less than {$msg_checks['max']}";
                 $status = 'down';
             }
         }
 
         return [$status, implode("\n", $notes)];
+    }
+
+    protected function modifyCheckDuration($check_id, $required_fail_duration, $is_up) {
+        if ($is_up) {
+            unset($this->fail_timestamps[$check_id]);
+            return true;
+        } else {
+            if (isset($this->fail_timestamps[$check_id])) {
+                $last_failure = $this->fail_timestamps[$check_id];
+            } else {
+                // not set yet - set it now
+                $last_failure = time();
+                $this->fail_timestamps[$check_id] = $last_failure;
+            }
+
+            $duration = time() - $last_failure;
+
+            $has_failed_long_enough = ($duration >= $required_fail_duration);
+            if ($has_failed_long_enough) {
+                return false;
+            } else {
+                return true;
+            }
+        }
     }
 
     // http://rabbitmq.lb.stagesvc.tokenly.co/api/queues/chainscout/bitcoinTestnet_tx?lengths_age=600&lengths_incr=5&msg_rates_age=600&msg_rates_incr=5&data_rates_age=600&data_rates_incr=5
