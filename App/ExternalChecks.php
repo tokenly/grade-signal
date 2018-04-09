@@ -153,8 +153,8 @@ class ExternalChecks
             $msg_checks = $parameters['messages'];
             $msg_count = $result['messages'];
 
-            $min_passed = isset($msg_checks['min']) ? ($msg_count < $msg_checks['min']) : true;
-            $max_passed = isset($msg_checks['max']) ? ($msg_count > $msg_checks['max']) : true;
+            $min_passed = isset($msg_checks['min']) ? ($msg_count >= $msg_checks['min']) : true;
+            $max_passed = isset($msg_checks['max']) ? ($msg_count <= $msg_checks['max']) : true;
 
             $min_passed = $this->modifyCheckDuration($check_spec['id'].':min', ($msg_checks['min_duration'] ?? 0), $min_passed);
             $max_passed = $this->modifyCheckDuration($check_spec['id'].':max', ($msg_checks['max_duration'] ?? 0), $max_passed);
