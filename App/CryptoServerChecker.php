@@ -27,65 +27,77 @@ class CryptoServerChecker
         $server_specs = [
             [
                 'id' => 'bitcoin',
+                'method' => 'bitcoin',
                 'name' => 'Bitcoin',
                 'chain' => 'bitcoin',
             ],
             [
-                'id' => 'bitcoin',
+                'id' => 'bitcoin_testnet',
+                'method' => 'bitcoin',
                 'name' => 'Bitcoin Testnet',
                 'chain' => 'bitcoinTestnet',
             ],
 
             [
                 'id' => 'indexd',
+                'method' => 'indexd',
                 'name' => 'Indexd',
                 'chain' => 'bitcoin',
             ],
             [
-                'id' => 'indexd',
+                'id' => 'indexd_testnet',
+                'method' => 'indexd',
                 'name' => 'Indexd Testnet',
                 'chain' => 'bitcoinTestnet',
             ],
 
             [
                 'id' => 'counterparty',
+                'method' => 'counterparty',
                 'name' => 'Counterparty',
                 'chain' => 'counterparty',
             ],
             [
-                'id' => 'counterparty',
+                'id' => 'counterparty_testnet',
+                'method' => 'counterparty',
                 'name' => 'Counterparty Testnet',
                 'chain' => 'counterpartyTestnet',
             ],
 
             [
                 'id' => 'counterparty_lite',
+                'method' => 'counterparty_lite',
                 'name' => 'Counterparty Lite',
                 'chain' => 'counterparty',
             ],
             [
-                'id' => 'counterparty_lite',
+                'id' => 'counterparty_lite_testnet',
+                'method' => 'counterparty_lite',
                 'name' => 'Counterparty Lite Testnet',
                 'chain' => 'counterpartyTestnet',
             ],
 
             [
                 'id' => 'ethereum',
+                'method' => 'ethereum',
                 'name' => 'Ethereum',
                 'chain' => 'ethereum',
             ],
             [
-                'id' => 'ethereum',
+                'id' => 'ethereum_testnet',
+                'method' => 'ethereum',
                 'name' => 'Ethereum Testnet',
                 'chain' => 'ethereumTestnet',
             ],
             [
                 'id' => 'ethereum_indexd',
+                'method' => 'ethereum_indexd',
                 'name' => 'Ethereum Indexd',
                 'chain' => 'ethereum',
             ],
             [
-                'id' => 'ethereum_indexd',
+                'id' => 'ethereum_indexd_testnet',
+                'method' => 'ethereum_indexd',
                 'name' => 'Ethereum Indexd Testnet',
                 'chain' => 'ethereumTestnet',
             ],
@@ -102,6 +114,7 @@ class CryptoServerChecker
                     'delay' => 30,
                     'server' => $server_spec['id'],
                     'chain' => $server_spec['chain'],
+                    'crypto_check_method' => $server_spec['method'],
                 ],
             ];
         }
@@ -122,7 +135,7 @@ class CryptoServerChecker
             return [null, null];
         }
 
-        $method_suffix = $params['server'];
+        $method_suffix = $params['crypto_check_method'];
         $method = 'runCheck_' . $method_suffix;
         if (method_exists($this, $method)) {
             return call_user_func([$this, $method], $params, $spec);
