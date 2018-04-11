@@ -26,6 +26,13 @@
         "tokenly/quotebot-client": "^1.0.1",
         "league/flysystem": "^1.0",
         "league/flysystem-aws-s3-v3": "^1.0",
-        "tokenly/tokenmap-client": "^2.0"
-    }
+        "tokenly/tokenmap-client": "^2.0",
+        "tokenly/substation-blockchains": "dev-master@dev"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "git@github.com:tokenly/substation-blockchains.git"
+        }
+    ]
 }

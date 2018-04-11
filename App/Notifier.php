@@ -183,7 +183,9 @@ class Notifier
             ]);
 
             list($status, $note) = $external_checks->runCheck($spec);
-            $state->setStatus($status, $note);
+            if ($status !== null) {
+                $state->setStatus($status, $note);
+            }
         }
     }
 

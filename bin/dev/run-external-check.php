@@ -35,8 +35,12 @@ foreach($external_check_ids as $external_check_id) {
             if ($spec['id'] == $external_check_id) {
                 // echo "checking: ".json_encode($spec, 192)."\n";
                 list($status, $note) = $external_checks->runCheck($spec);
-                echo "\$status: $status\n";
-                echo "\$note: $note\n";
+                if ($status !== null) {
+                    echo "\$status: $status\n";
+                    if (strlen($note)) {
+                        echo "\$note: $note\n";
+                    }
+                }
             }
         }
     } catch (Exception $e) {

@@ -2,6 +2,7 @@
 
 namespace App;
 
+use App\CryptoServerChecker;
 use Exception;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\RequestException;
@@ -57,6 +58,9 @@ class ExternalChecks
             if ($env_specs) {
                 $this->external_check_specs = array_merge($this->external_check_specs, $env_specs);
             }
+
+            $crypto_server_checker = new CryptoServerChecker();
+            $this->external_check_specs = array_merge($this->external_check_specs, $crypto_server_checker->getCheckSpecs());
         }
         return $this->external_check_specs;
     }
@@ -70,7 +74,7 @@ class ExternalChecks
             return call_user_func([$this, $method], $spec['params'], $spec);
         } else {
             // bad check
-            throw new Exception("Bad method: $method_suffix", 1);
+            throw new Exception("Bad method: $method", 1);
         }
     }
 
@@ -156,8 +160,8 @@ class ExternalChecks
             $min_passed = isset($msg_checks['min']) ? ($msg_count >= $msg_checks['min']) : true;
             $max_passed = isset($msg_checks['max']) ? ($msg_count <= $msg_checks['max']) : true;
 
-            $min_passed = $this->modifyCheckDuration($check_spec['id'].':min', ($msg_checks['min_duration'] ?? 0), $min_passed);
-            $max_passed = $this->modifyCheckDuration($check_spec['id'].':max', ($msg_checks['max_duration'] ?? 0), $max_passed);
+            $min_passed = $this->modifyCheckDuration($check_spec['id'] . ':min', ($msg_checks['min_duration'] ?? 0), $min_passed);
+            $max_passed = $this->modifyCheckDuration($check_spec['id'] . ':max', ($msg_checks['max_duration'] ?? 0), $max_passed);
 
             if (!$min_passed) {
                 $notes[] = "messages was $msg_count. Needs to be {$msg_checks['min']}";
@@ -172,7 +176,14 @@ class ExternalChecks
         return [$status, implode("\n", $notes)];
     }
 
-    protected function modifyCheckDuration($check_id, $required_fail_duration, $is_up) {
+    protected function runCheck_crypto_server($params, $spec)
+    {
+        $crypto_server_checker = new CryptoServerChecker();
+        return $crypto_server_checker->runCheck($params, $spec);
+    }
+
+    protected function modifyCheckDuration($check_id, $required_fail_duration, $is_up)
+    {
         if ($is_up) {
             unset($this->fail_timestamps[$check_id]);
             return true;
