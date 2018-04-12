@@ -71,7 +71,13 @@ class ExternalChecks
         $method_suffix = $spec['method'];
         $method = 'runCheck_' . $method_suffix;
         if (method_exists($this, $method)) {
-            return call_user_func([$this, $method], $spec['params'], $spec);
+            try {
+                return call_user_func([$this, $method], $spec['params'], $spec);
+            } catch (Exception $e) {
+                $status = 'down';
+                $note = $e->getMessage();
+                return [$status, $note];
+            }
         } else {
             // bad check
             throw new Exception("Bad method: $method", 1);
