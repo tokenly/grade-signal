@@ -36,9 +36,10 @@ foreach($external_check_ids as $external_check_id) {
                 // echo "checking: ".json_encode($spec, 192)."\n";
                 list($status, $note) = $external_checks->runCheck($spec);
                 if ($status !== null) {
-                    echo "\$status: $status\n";
+                    echo "Checking {$spec['name']}:\n";
+                    echo "  \$status: $status\n";
                     if (strlen($note)) {
-                        echo "\$note: $note\n";
+                        echo "  \$note: $note\n";
                     }
                 }
             }

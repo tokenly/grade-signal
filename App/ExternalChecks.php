@@ -3,6 +3,7 @@
 namespace App;
 
 use App\CryptoServerChecker;
+use App\ErrorLogChecker;
 use Exception;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\RequestException;
@@ -61,6 +62,9 @@ class ExternalChecks
 
             $crypto_server_checker = new CryptoServerChecker();
             $this->external_check_specs = array_merge($this->external_check_specs, $crypto_server_checker->getCheckSpecs());
+
+            $error_log_checker = new ErrorLogChecker();
+            $this->external_check_specs = array_merge($this->external_check_specs, $error_log_checker->getCheckSpecs());
         }
         return $this->external_check_specs;
     }
@@ -186,6 +190,12 @@ class ExternalChecks
     {
         $crypto_server_checker = new CryptoServerChecker();
         return $crypto_server_checker->runCheck($params, $spec);
+    }
+
+    protected function runCheck_error_log($params, $spec)
+    {
+        $error_log_checker = new ErrorLogChecker();
+        return $error_log_checker->runCheck($params, $spec);
     }
 
     protected function modifyCheckDuration($check_id, $required_fail_duration, $is_up)
