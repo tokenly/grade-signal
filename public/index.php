@@ -1,5 +1,10 @@
 <?php
 
+if (substr($_SERVER['REQUEST_URI'], 0, 9) == '/_health/') {
+    require(__DIR__.'/_health/index.php');
+    exit;
+}
+
 use App\Environment;
 use App\Log;
 
