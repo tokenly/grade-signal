@@ -9,6 +9,7 @@ require __DIR__.'/../vendor/autoload.php';
 Environment::init(__DIR__.'/..');
 date_default_timezone_set('America/Chicago');
 
+require(__DIR__.'/include/auth.php');
 require(__DIR__.'/include/header.php');
 
 $show_down_only = $_GET['down'] ?? false;
