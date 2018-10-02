@@ -7,8 +7,6 @@ use App\ErrorLogChecker;
 use Exception;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\RequestException;
-use Tokenly\QuotebotClient\Client as QuotebotClient;
-use Tokenly\QuotebotClient\Mock\MemoryCacheStore;
 use Tokenly\TokenmapClient\Mock\MemoryCacheStore as TokenmapMemoryCacheStore;
 use Tokenly\TokenmapClient\TokenmapClient;
 
@@ -41,12 +39,6 @@ class ExternalChecks
     {
         if (!isset($this->external_check_specs)) {
             $this->external_check_specs = [
-                [
-                    'id' => 'quotebot_freshness',
-                    'method' => 'quotebot_freshness',
-                    'name' => 'Quotebot Freshness',
-                    'params' => [],
-                ],
                 [
                     'id' => 'tokenmap_freshness',
                     'method' => 'tokenmap_freshness',
@@ -86,30 +78,6 @@ class ExternalChecks
             // bad check
             throw new Exception("Bad method: $method", 1);
         }
-    }
-
-    public function runCheck_quotebot_freshness($parameters)
-    {
-        $stale_seconds = env('QUOTEBOT_FRESHNESS_TTL', 1800); // 30 minutes default
-
-        $success = true;
-        $notes = [];
-        $quotebot_client = new QuotebotClient(env('QUOTEBOT_CONNECTION_URL'), env('QUOTEBOT_API_TOKEN'), new MemoryCacheStore());
-        $loaded_quote_data = $quotebot_client->loadRawQuotesData();
-        foreach ($loaded_quote_data['quotes'] as $loaded_quote) {
-            $quote_timestamp = isset($loaded_quote['time']) ? strtotime($loaded_quote['time']) : 0;
-            $seconds_old = time() - $quote_timestamp;
-            if ($seconds_old >= $stale_seconds) {
-                $notes[] = "Quote from provider {$loaded_quote['source']} for pair {$loaded_quote['pair']} was $seconds_old seconds old.";
-                $success = false;
-            }
-        }
-
-        if ($success) {
-            return ['up', null];
-        }
-
-        return ['down', implode("\n", $notes)];
     }
 
     public function runCheck_tokenmap_freshness($parameters)
