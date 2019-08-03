@@ -120,6 +120,12 @@ class ExternalChecks
         $stats_to_check = ['ack', 'get_no_ack'];
         foreach ($stats_to_check as $stat_name) {
             $checks = $parameters[$stat_name] ?? [];
+
+            if (!isset($result['message_stats'][$stat_name . '_details'])) {
+                Log::warn("message_stats[{$stat_name}_details] not found for ".$parameters['vhost'] . '/' . $parameters['queue']);
+                continue;
+            }
+
             $rate = $result['message_stats'][$stat_name . '_details']['avg_rate'];
             if (isset($checks['min']) and $rate < $checks['min']) {
                 $notes[] = "$stat_name was $rate. Needs to be {$checks['min']}";
